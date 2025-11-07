@@ -4,94 +4,71 @@ import java.util.*;
 
 public class Sketch extends Applet {
 
-    int columns, rows;
-    int gridSize;
-
-    /*
-     * grid[column][row]
-     */
-    Vakje[][] grid;
-    ArrayList<Region> regions = new ArrayList<>();
-
-    boolean drawRegion = true;
-    HashSet<Vakje> drawingRegion = new HashSet<>();
-
-    boolean settingValues = true;
-
-    boolean trialMode = false;
-    Vakje[][] gridTrialSave;
+    Stack<State> history = new Stack<>();
+    State state;
 
     public void setup() {
-        columns = Main.columns;
-        rows = Main.rows;
-
-        float w = displayWidth * 0.8f / columns;
+        int cols = Main.columns;
+        int rows = Main.rows;
+        float w = displayWidth * 0.8f / cols;
         float h = displayHeight * 0.8f / rows;
 
-        gridSize = round(min(w, h));
+        int gridSize = round(min(w, h));
 
-        size(columns * gridSize, rows * gridSize);
+        size(cols * gridSize, rows * gridSize);
 
-        grid = new Vakje[columns][rows];
-        for (int c = 0; c < columns; c++) {
-            for (int r = 0; r < rows; r++) {
-                grid[c][r] = new Vakje(c, r, gridSize);
-            }
-        }
-
-        gridTrialSave = new Vakje[columns][rows];
+        state = new State(cols, rows, gridSize);
     }
 
     public void draw() {
         background(230);
         stroke(0, 100);
         strokeWeight(2);
-        for (int c = 1; c < columns; c++) {
-            line(c * gridSize, 0, c * gridSize, height);
+        for (int c = 1; c < state.cols; c++) {
+            line(c * state.gridSize, 0, c * state.gridSize, height);
         }
-        for (int r = 1; r < rows; r++) {
-            line(0, r * gridSize, width, r * gridSize);
+        for (int r = 1; r < state.rows; r++) {
+            line(0, r * state.gridSize, width, r * state.gridSize);
         }
 
         Option<Vakje> hover = getMouseOver();
-        if (drawRegion) {
+        if (state.drawRegion) {
             if (mousePressed && hover.isSome()) {
-                if (!drawingRegion.contains(hover.unwrap())) {
-                    drawingRegion.add(hover.unwrap());
+                if (!state.drawingRegion.contains(hover.unwrap())) {
+                    state.drawingRegion.add(hover.unwrap());
                 }
             }
         }
 
-        for (Region region : regions) {
+        for (Region region : state.regions) {
             region.draw();
         }
-        for (int i = 0; i < grid.length; i++) {
-            for (int j = 0; j < grid[i].length; j++) {
-                grid[i][j].draw();
+        for (int i = 0; i < state.grid.length; i++) {
+            for (int j = 0; j < state.grid[i].length; j++) {
+                state.grid[i][j].draw();
             }
         }
 
         if (hover.isSome()) {
             fill(0, 18);
             noStroke();
-            square(hover.unwrap().x, hover.unwrap().y, gridSize);
+            square(hover.unwrap().x, hover.unwrap().y, state.gridSize);
         }
 
-        if (drawRegion) {
-            for (Vakje vakje : drawingRegion) {
+        if (state.drawRegion) {
+            for (Vakje vakje : state.drawingRegion) {
                 fill(0, 50);
                 noStroke();
-                square(vakje.x, vakje.y, gridSize);
+                square(vakje.x, vakje.y, state.gridSize);
             }
         }
 
         ArrayList<String> info = new ArrayList<>();
-        if (drawRegion)
+        info.add("history depth: " + history.size());
+        if (state.drawRegion)
             info.add("region edit");
-        if (settingValues)
+        if (state.settingValues)
             info.add("set values");
-        if (trialMode)
-            info.add("trial");
         fill(0);
         textAlign(RIGHT);
         textSize(20);
@@ -104,32 +81,30 @@ public class Sketch extends Applet {
     public void keyTyped() {
         // Region
         if (key == 'r') {
-            drawRegion = !drawRegion;
-            if (!drawRegion)
-                drawingRegion.clear();
+            state.drawRegion = !state.drawRegion;
+            if (!state.drawRegion)
+                state.drawingRegion.clear();
         } else if (key == 's') {
-            settingValues = !settingValues;
-        } else if (key == 't') {
-            trialMode = !trialMode;
-            if (trialMode) {
-                for (int c = 0; c < columns; c++) {
-                    for (int r = 0; r < rows; r++) {
-                        gridTrialSave[c][r] = grid[c][r].copy();
-                    }
-                }
-            } else {
-                for (int c = 0; c < columns; c++) {
-                    for (int r = 0; r < rows; r++) {
-                        grid[c][r].setFromVakje(gridTrialSave[c][r]);
-                    }
+            state.settingValues = !state.settingValues;
+        } else if (key == '.') {
+            history.add(state);
+            state = state.clone();
+        } else if (key == ',') {
+            if (!history.isEmpty()) {
+                state = history.pop();
+                if (state.firstMove != null) {
+                    state.firstMove.highlightAlpha = 255;
                 }
             }
         } else if (keyString.equals("Enter")) {
-            if (drawRegion) {
-                if (drawingRegion.size() > 0) {
-                    Region region = new Region(regions.size(), drawingRegion);
-                    drawingRegion.clear();
-                    regions.add(region);
+            if (state.drawRegion) {
+                if (state.drawingRegion.size() > 0) {
+                    history.add(state);
+                    state = state.clone();
+
+                    Region region = new Region(state.regions.size(), state.drawingRegion);
+                    state.drawingRegion.clear();
+                    state.regions.add(region);
 
                     for (Vakje vakje : region.region) {
                         vakje.setRegion(region);
@@ -137,8 +112,8 @@ public class Sketch extends Applet {
                 }
             }
         } else if (keyString.equals("Backspace")) {
-            if (drawingRegion.size() > 0)
-                drawingRegion.clear();
+            if (state.drawingRegion.size() > 0)
+                state.drawingRegion.clear();
             else {
                 Option<Vakje> hover = getMouseOver();
                 if (hover.isSome()) {
@@ -154,19 +129,18 @@ public class Sketch extends Applet {
                     hover.unwrap().editNotes(parseChar(keyString) - '0');
                 } else {
                     hover.unwrap().setValue(parseInt(keyString));
-                    hover.unwrap().setValueGiven(settingValues);
+                    hover.unwrap().setValueGiven(state.settingValues);
+                    if (state.firstMove == null)
+                        state.firstMove = hover.unwrap();
                 }
             }
         }
     }
 
     public Option<Vakje> getMouseOver() {
-        // int i = max(min(mouseX / gridSize, columns - 1), 0);
-        // int j = max(min(mouseY / gridSize, rows - 1), 0);
-        // return grid[i][j];
-        int i = mouseX / gridSize;
-        int j = mouseY / gridSize;
-        Vakje vakje = (i < 0 || i >= columns || j < 0 || j >= rows) ? null : grid[i][j];
+        int i = mouseX / state.gridSize;
+        int j = mouseY / state.gridSize;
+        Vakje vakje = (i < 0 || i >= state.cols || j < 0 || j >= state.rows) ? null : state.grid[i][j];
         return new Option<>(vakje);
     }
 

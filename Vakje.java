@@ -11,6 +11,8 @@ class Vakje extends PComponent implements EventIgnorer {
 
     boolean[] notes = new boolean[] { false, false, false, false, false };
 
+    int highlightAlpha = 0;
+
     public Vakje(int i, int j, float w) {
         this.i = i;
         this.j = j;
@@ -68,6 +70,13 @@ class Vakje extends PComponent implements EventIgnorer {
         textSize(w * 0.7);
         textAlign(CENTER);
         text(value, x + w / 2, y + w / 2);
+
+        if (highlightAlpha > 0) {
+            fill(233, 255, 35, highlightAlpha);
+            noStroke();
+            rect(x, y, w, w);
+            highlightAlpha = max(0, highlightAlpha - 5);
+        }
     }
 
     public void setRegion(Region region) {
