@@ -24,11 +24,13 @@ class Vakje extends PComponent implements EventIgnorer {
 
     public void setValue(int value) {
         this.value = value;
-        if (value != -1 && region != null) {
-            for (Vakje vakje : region.region) {
-                int index = value - 1;
-                if (vakje.notes[index])
-                    vakje.notes[index] = false;
+        if (Sketch.SMART_FILL) {
+            if (value != -1 && region != null) {
+                for (Vakje vakje : region.region) {
+                    int index = value - 1;
+                    if (vakje.notes[index])
+                        vakje.notes[index] = false;
+                }
             }
         }
     }

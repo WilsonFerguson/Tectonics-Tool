@@ -7,6 +7,8 @@ public class Sketch extends Applet {
     Stack<State> history = new Stack<>();
     State state;
 
+    public static final boolean SMART_FILL = true;
+
     public void setup() {
         int cols = Main.columns;
         int rows = Main.rows;
@@ -64,7 +66,13 @@ public class Sketch extends Applet {
         }
 
         ArrayList<String> info = new ArrayList<>();
-        info.add("history depth: " + history.size());
+        String historyStr = "";
+        for (int i = 0; i < history.size(); i++) {
+            historyStr += history.get(i).firstMove != null ? "" + history.get(i).firstMove.value : "_";
+        }
+        info.add(historyStr + "_");
+        if (state.solved)
+            info.add("solved");
         if (state.drawRegion)
             info.add("region edit");
         if (state.settingValues)
@@ -86,6 +94,10 @@ public class Sketch extends Applet {
                 state.drawingRegion.clear();
         } else if (key == 's') {
             state.settingValues = !state.settingValues;
+            if (!state.settingValues && SMART_FILL) {
+                state.generateNotes();
+                state.simplify(this);
+            }
         } else if (key == '.') {
             history.add(state);
             state = state.clone();
@@ -132,6 +144,10 @@ public class Sketch extends Applet {
                     hover.unwrap().setValueGiven(state.settingValues);
                     if (state.firstMove == null)
                         state.firstMove = hover.unwrap();
+
+                    state.checkSolved();
+                    if (SMART_FILL)
+                        state.simplify(this);
                 }
             }
         }
@@ -143,20 +159,4 @@ public class Sketch extends Applet {
         Vakje vakje = (i < 0 || i >= state.cols || j < 0 || j >= state.rows) ? null : state.grid[i][j];
         return new Option<>(vakje);
     }
-
-    // public void saveState() {
-    // StringBuilder sb = new StringBuilder();
-    // // Cols, rows, gridSize
-    // sb.append(columns + " " + rows + " " + gridSize + "\n");
-    //
-    // // Grid, regions
-    // for (int i = 0; i < columns; i++) {
-    // for (int j = 0; j < rows; j++) {
-    // sb.append(grid[i][j].value + " ");
-    // }
-    // sb.append("\n");
-    // }
-    //
-    // // trialMode, gridTrialSave
-    // }
 }

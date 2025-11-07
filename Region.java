@@ -80,4 +80,15 @@ class Region extends PComponent implements EventIgnorer {
 
         return edges;
     }
+
+    public boolean isSolved() {
+        HashSet<Integer> values = new HashSet<>();
+        for (Vakje vakje : region) {
+            if (vakje.value == -1)
+                return false;
+            values.add(vakje.value);
+        }
+
+        return values.size() == region.size();
+    }
 }
